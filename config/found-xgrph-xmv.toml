@@ -1,0 +1,9 @@
+# xgrph-xmv names proven in The Sims default.xbe (XDK 5233). Evidence: docs/xgrph-xmv-symbols.md
+# Empty on purpose: no name in config/game.toml [symbols] belongs to the XGRPH or XMV section. Every one of
+# the 242 names is tagged D3D, DSOUND, XNET, .text, XPP, BINK or XONLINE by the 3925/5233/5558/5849 signature
+# sets, and none is tagged XGRPH or XMV. The SDK runtime has no host body for any XGRAPHICS or XMV function,
+# so both sections run their recompiled console code by design (sdk/runtime/xdk/d3d8.cpp:2), as they do on
+# the Bustin' Out port, whose intro XMV plays. The 14 entry points the game calls (6 XMV, 8 XGRPH) are
+# recorded in the doc with their invariants and 5558 .XTLID twins. They are not [symbols] names, and
+# tools/merge_symbols.py would refuse them.
+[symbols]

@@ -1,0 +1,48 @@
+# build
+/out/
+/build/
+*.zip
+*.pdb
+*.exe
+*.obj
+*.o
+
+# recompiled code, derived from the game
+/generated/
+
+# user's own game files: the disc image, its default.xbe and everything extracted from
+# it into assets/, plus the 4k movie assets regenerated from them by tools/upscale_movies.py
+/assets/
+/assets/movies_4k/
+*.iso
+*.xbe
+
+# downloaded media tools; tools/upscale_movies.py itself stays tracked
+/tools/bin/
+
+# locally installed build toolchain
+/.toolchain/
+
+# runtime files
+settings.toml
+shadercache/
+/logs/
+/hdd/
+/CrashDumps/
+
+# editors
+.vs/
+.vscode/
+.idea/
+
+# Local temporary folder
+.local
+__pycache__/
+
+# Release artifacts: built by release.sh / release.bat, attached to a GitHub
+# release, never committed.
+/Sims1-linux-x64.tar.zst
+/Sims1-win64.zip
+
+# F3 frame captures (game-rendered, derived from the disc)
+/cap/

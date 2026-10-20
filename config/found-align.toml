@@ -1,0 +1,3 @@
+# align names proven in The Sims default.xbe (XDK 5233). Evidence: docs/align-symbols.md
+# Written by tools/align_symbols.py: rerun it instead of editing.
+[symbols]

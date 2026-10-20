@@ -1,0 +1,82 @@
+# D3D8, DSOUND and XAPI [data] names proven in The Sims default.xbe (XDK 5233). Evidence: docs/layout-5233.md
+#
+# Each address is read out of the disassembly of one function and re-checked against a second,
+# independent function that touches the same datum before it is written down, the rule of
+# fuzion frenzy/config/found-d3d8-data.toml. One exception is stated where it occurs:
+# D3D_SimpleRenderStateEncode has exactly one reader in this image, so its re-check is its content.
+#
+# Not staged. D3D_RenderState is what lets the host Direct3D_CreateDevice past its XDK_REQUIRE, after
+# which ApplyDefaultStates and SetComplex write the guest array at the indices the layout gives. This
+# build numbers its render and texture stage states as 5849 does (docs/d3d8-state-symbols.md; the
+# corroboration is in docs/layout-5233.md), its array is 166 dwords from 0x19F770 up to D3D__pDevice
+# 0x19FA08, exactly gpu::kRsMax, and every CDevice offset the host writes is proven in
+# sdk/xdk/5233/layout.toml. No index the host can write falls outside what this image owns.
+#
+# Left at 0: D3D_IndexData. No instruction in this image reads or writes it: D3DDevice_SetIndices and
+# GetIndices are not linked, and the one D3DDevice_DrawIndexedVertices call (0x154255) passes its own
+# index pointer. The host needs it only inside its SetIndices body, which this title never reaches.
+
+[data]
+# Direct3D_CreateDevice 0x18F8B0: mov edi, offset 0x19FA10 (0x18F8EA), stores it into D3D__pDevice
+# (0x18F8F4), runs CDevice_Init on it (0x18F90A) and returns it through ppReturnedDeviceInterface
+# (0x18F94B). Re-checked: D3DDevice_SetRenderState_Simple 0x18FCC0 pushes through [0x19FA10] directly,
+# and the first Linux boot faulted with ecx = 0x1A11D8 = 0x19FA10 + 0x17C8, the embedded miniport
+# CDevice_Init 0x196643 derives from this object.
+D3D_Device = 0x19FA10
+
+# Direct3D_CreateDevice 0x18F8F4: mov dword_19FA08, edi (&D3D_Device); its failure path clears it
+# (0x18F935). Re-checked: D3DDevice_Release 0x192EB0 clears it, and every D3DDevice_* body loads the
+# device from it (D3DDevice_SetTexture 0x1936F5, D3DDevice_SetStreamSource 0x191E90).
+D3D_pDevice = 0x19FA08
+
+# D3DDevice_SetTexture 0x193771..0x19377D: or eax, 4800h into it. Re-checked: D3DDevice_SetStreamSource
+# 0x191EEC ors 40h/70h into it, D3DDevice_SetTransform 0x192DA6/0x192DB8 ors in its transform bit,
+# D3DDevice_SetRenderStateNotInline 0x18FD28 ors in a deferred state's dirty bits. A global, as in 5849,
+# not CDevice + 8 as in 3925.
+D3D_DirtyFlags = 0x19F568
+
+# D3DDevice_SetTextureStageStateNotInline 0x190780: shl ecx, 5; add ecx, eax, then
+# mov dword_19F570[ecx*4], eax (0x1907AC), [4][32] by stage and type. Re-checked: the D3D debugger
+# query 0x193C50 (published by CDevice_Init 0x196AB9) answers 8Axxxxxxh with mov edx,
+# dword_19F570[eax*4] (0x193CA8) after the same stage * 32 + type.
+D3D_DeferredTextureState = 0x19F570
+
+# D3DDevice_SetPixelShader 0x195510: mov edi, offset 0x19F770; mov ecx, 39h; rep movsd copies the 57
+# pixel shader states to it (0x1955FF), then stores PSTextureModes at 0x19F990 = [136] (0x19560C).
+# Re-checked: D3DDevice_SetRenderStateNotInline 0x18FCF0 stores mov dword_19F770[esi*4] for the simple
+# (0x18FD0D) and deferred (0x18FD32) states, and the debugger query 0x193C74 reads it. 166 dwords up to
+# D3D__pDevice.
+D3D_RenderState = 0x19F770
+
+# D3DDevice_SetRenderStateNotInline 0x18FCF0: below cmp esi, 5Ch, mov ecx, dword_1EE768[esi*4] (0x18FCFA)
+# and a call to D3DDevice_SetRenderState_Simple 0x18FCC0. This is the only reader in the image, so the
+# re-check is the content: its 92 dwords are byte-identical to 5558's table 0x2E1FE0 (entry 0 0x40260,
+# the NV2A combiner alpha input method), and it starts exactly where the deferred dirty table 0x1EE548
+# [92..135] ends. The host's R32(kSimpleEncode + rs * 4) decode applies unchanged.
+D3D_SimpleRenderStateEncode = 0x1EE768
+
+# D3DDevice_SetStreamSource 0x191E90: lea esi, [eax+eax*2]; shl esi, 2, stores Stride at 0x1A1A50[esi]
+# (0x191EF2) and the vertex buffer at 0x1A1A58[esi] (0x191EF8). Re-checked: the vertex array setup
+# 0x199450 reads the stride (0x1994E8), buffer (0x199529) and offset (0x199541) from the same table, and
+# CDevice_UnInit 0x196AF0 releases its 16 buffers (0x196BF0) and zeroes its 30h dwords (0x196C7E).
+D3D_Streams = 0x1A1A50
+
+# The CDirectSoundStream constructor 0x1B6AD1 stores it at [stream + 0] (0x1B6AEA). Re-checked: the
+# destructor 0x1B5BCE restores it at [esi - 4] (0x1B5BD6). Its seven entries are AddRef 0x1B5C0F,
+# Release, GetInfo, GetStatus, Process, Discontinuity, Flush, each the twin of 5558's 0x2F9038 entry.
+DSound_StreamVtable = 0x2004C4
+
+# The same constructor stores it at [stream + 4] (0x1B6AE3). Re-checked: the destructor 0x1B5BCE
+# restores it at [esi] = stream + 4 (0x1B5BDD).
+DSound_StreamVtable2 = 0x2004B8
+
+# The title pushes it to XGetDevices 0x1E7EE4 (0x12B96D) and to XInputOpen 0x1E7B7C (0x12B998,
+# 0x12BA8C). Re-checked: it pushes it to XGetDeviceChanges 0x1E7F06 (0x12BA05) and lists it first in its
+# XInitDevices preallocation table (0x12B958); the XID class record at 0x1E6C68 points at it (+4).
+XPP_GamepadType = 0x1E6C30
+
+# Second in the title's XInitDevices preallocation table (0x12B960). Re-checked: the memory unit
+# driver's init pushes it to 0x1E71CB (0x1E6E0C), whose result + 1 (at most 8) is how many
+# "\Device\MU_n" device objects it creates (0x1EE42C, loop 0x1E6E36..0x1E6E5D). That is the
+# instruction 5558's 0x2D9EEC is with its 0x2D9DC0.
+XPP_MemoryUnitType = 0x1E6CE0

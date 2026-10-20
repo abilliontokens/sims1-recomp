@@ -1,0 +1,87 @@
+# d3d8-core names proven in The Sims default.xbe (XDK 5233). Evidence: docs/d3d8-core-symbols.md
+#
+# 47 of the 69 target names: 35 new, plus the 12 constant-matcher anchors re-proven here at the
+# address config/game.toml already has (CopyRects, CreateVertexShader, DrawIndexedVertices,
+# DrawVertices, InsertCallback, SetPixelShader, SetShaderConstantMode, SetStreamSource, SetTexture,
+# SetVertexShaderConstantNotInlineFast, D3D_InternalAddRef, D3D_InternalRelease). The other 22 are
+# not linked into this image (docs/d3d8-core-symbols.md, "Not emitted").
+#
+# API shape of this build: D3DDevice_Swap (retn 4), GetBackBuffer2 (retn 4),
+# GetDepthStencilSurface2 (retn), and D3DDevice_Reset EXISTS (retn 4) and is called by the title.
+#
+# Not staged. Each host body these names select runs on the device the host
+# Direct3D_CreateDevice builds. That body sizes, clears and fills the device through the CDevice_*
+# keys of sdk/xdk/5233/layout.toml, and needs the seven D3D [data] names in its XDK_REQUIRE. Both
+# preconditions are met:
+#  - D3d8DataLayout has proven sdk/xdk/5233/layout.toml for this build (no PROVISIONAL header,
+#    every key proven). Every offset these bodies read agrees with the value measured
+#    independently in docs/d3d8-core-symbols.md, "Wiring preconditions": CDevice_Size 0x2040,
+#    RenderTarget/Depth 0x15B4/0x15B8, Back/FrontBuffer 0x15C0/0x15C4, Transforms 0x810, ZScale
+#    0x50C, SwapCount 0x2018, VBlank 0x1958/0x195C, Gamma 0x19A4/0x1FA4.
+#  - config/found-d3d8-data.toml (not staged) carries D3D_Device 0x19FA10, D3D_pDevice 0x19FA08 and
+#    the other five. If this file were merged without it, the host Direct3D_CreateDevice would stop
+#    at its XDK_REQUIRE with a loud abort, which is safe.
+# Direct3D_CreateDevice (0x18F8B0) fixes the boot fault. The guest body's chain
+# CDevice_Init 0x196590 -> CMiniport_InitHardware 0x19A93D -> 0x19A44A reads NV2A PCI config
+# 0xFD001804, the fault the Linux build hit 122 ms in.
+#
+# The next blocker after this merge: D3DDevice_InsertCallback (0x1926F0, already in game.toml) has
+# NO host body in sdk/runtime or src/. The title waits on it through its render thread
+# (0x156B01, 0x152829), so the port needs Bustin' Out's
+# HLE_STDCALL(D3DDevice_InsertCallback, 3), from simsbustinout/src/game/hooks.cpp:48.
+
+[symbols]
+# device lifetime
+Direct3D_CreateDevice                          = 0x18F8B0
+D3DDevice_Release                              = 0x192E90
+D3DDevice_Reset                                = 0x193140
+D3D_InitDefaultState                           = 0x195E30
+# resources
+D3D_InternalAddRef                             = 0x18FA90
+D3D_InternalRelease                            = 0x18FC20
+D3D_BlockOnResource                            = 0x192CA0
+Lock2DSurface                                  = 0x197D10
+# push buffer, fences, blocking
+D3DDevice_InsertCallback                       = 0x1926F0
+CDevice_KickOff                                = 0x192760
+D3D_SetFence                                   = 0x1928B0
+D3D_BlockOnTime                                = 0x192960
+D3D_MakeRequestedSpace                         = 0x192AA0
+D3DDevice_MakeSpace                            = 0x192C20
+D3DDevice_BeginPush                            = 0x192C30
+D3D_KickOffAndWaitForIdle                      = 0x192C80
+D3DDevice_BlockUntilVerticalBlank              = 0x192F10
+# shaders and constants
+D3DDevice_CreateVertexShader                   = 0x191B20
+D3DDevice_SetVertexShaderConstant1             = 0x191C60
+D3DDevice_SetVertexShaderConstant4             = 0x191CC0
+D3DDevice_SetVertexShaderConstantNotInlineFast = 0x191D70
+D3DDevice_LoadVertexShader                     = 0x191F20
+D3DDevice_SelectVertexShader                   = 0x191F80
+D3DDevice_SetShaderConstantMode                = 0x192000
+D3DDevice_DeleteVertexShader                   = 0x192160
+D3DDevice_SetVertexShader                      = 0x192270
+D3DDevice_SetPixelShader                       = 0x195510
+# streams, textures, transforms
+D3DDevice_SetStreamSource                      = 0x191E90
+D3DDevice_SetTransform                         = 0x192D80
+D3DDevice_SetTexture                           = 0x1936F0
+D3DDevice_SetPalette                           = 0x1938A0
+# targets, viewport, presentation
+D3DDevice_SetRenderTarget                      = 0x192D60
+D3DDevice_SetFlickerFilter                     = 0x192F40
+D3DDevice_SetSoftDisplayFilter                 = 0x192F90
+D3DDevice_GetBackBuffer2                       = 0x1931F0
+D3DDevice_CopyRects                            = 0x193240
+D3DDevice_GetDepthStencilSurface2              = 0x193570
+D3DDevice_SetViewport                          = 0x193590
+D3DDevice_SetScissors                          = 0x193A60
+D3DDevice_SetScreenSpaceOffset                 = 0x193C00
+D3DDevice_Swap                                 = 0x1948F0
+D3DDevice_Clear                                = 0x194A90
+# drawing
+D3DDevice_DrawVerticesUP                       = 0x194F00
+D3DDevice_DrawVertices                         = 0x195060
+D3DDevice_DrawIndexedVertices                  = 0x195100
+D3DDevice_Begin                                = 0x195450
+D3DDevice_End                                  = 0x195490

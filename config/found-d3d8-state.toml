@@ -1,0 +1,54 @@
+# D3D8 render-state and texture-stage names proven in The Sims default.xbe (XDK 5233). Evidence: docs/d3d8-state-symbols.md
+# 36 of the 36 target names: 30 new, plus the 6 anchors from the constant matcher (CullMode, FogColor, LineWidth,
+# StencilEnable, StencilFail, TexCoordIndex), each re-proven here at the address config/game.toml already has.
+#
+# This file is not staged. XDK 5233 numbers its render states and texture-stage states exactly as XDK 5849 does:
+# SetRenderStateNotInline 0x18FCF0 bounds the blocks with cmp esi,5Ch / cmp esi,88h; the complex-handler table
+# 0x19D4E0 holds 30 handlers for states 136..165 in 5849 order; slot 166 holds data. The deferred-dirty,
+# default-value, simple-encode and texture-stage tables are identical to 5558's, and SetTextureStageStateNotInline
+# 0x190780 dispatches exactly as 5558's does. So sdk/xdk/5233/layout.toml needs no RenderState_/TextureState_
+# table: the host's gpu::kRs*/gpu::kTss* numbers are this build's own. The host bodies also need D3D_RenderState,
+# D3D_DeferredTextureState, D3D_SimpleRenderStateEncode and TextureState_Stage. Direct3D_CreateDevice's XDK_REQUIRE
+# checks every one of them before a device exists (docs/d3d8-state-symbols.md, "Wiring preconditions").
+
+[symbols]
+# state.obj: render-state entry points
+D3DDevice_SetRenderState_PSTextureModes              = 0x18FC90
+D3DDevice_SetRenderState_Simple                      = 0x18FCC0
+D3DDevice_SetRenderStateNotInline                    = 0x18FCF0
+# state.obj: complex render-state handlers; each is the handler at 0x19D4E0 + 4 * its 5849 index
+D3DDevice_SetRenderState_EdgeAntiAlias               = 0x190020
+D3DDevice_SetRenderState_ShadowFunc                  = 0x190060
+D3DDevice_SetRenderState_FogColor                    = 0x1900A0
+D3DDevice_SetRenderState_CullMode                    = 0x1900F0
+D3DDevice_SetRenderState_FrontFace                   = 0x190160
+D3DDevice_SetRenderState_NormalizeNormals            = 0x1901A0
+D3DDevice_SetRenderState_TextureFactor               = 0x1901E0
+D3DDevice_SetRenderState_LineWidth                   = 0x190240
+D3DDevice_SetRenderState_Dxt1NoiseEnable             = 0x1902B0
+D3DDevice_SetRenderState_LogicOp                     = 0x1903B0
+D3DDevice_SetRenderState_FillMode                    = 0x190410
+D3DDevice_SetRenderState_BackFillMode                = 0x190460
+D3DDevice_SetRenderState_TwoSidedLighting            = 0x1904C0
+D3DDevice_SetRenderState_VertexBlend                 = 0x190530
+# state.obj: texture-stage states, dispatched by SetTextureStageStateNotInline on the stage-state type
+D3DDevice_SetTextureState_TexCoordIndex              = 0x190580
+D3DDevice_SetTextureState_BumpEnv                    = 0x190690
+D3DDevice_SetTextureState_BorderColor                = 0x190700
+D3DDevice_SetTextureState_ColorKeyColor              = 0x190740
+D3DDevice_SetTextureStageStateNotInline              = 0x190780
+# state.obj: complex render-state handlers, continued
+D3DDevice_SetRenderState_ZEnable                     = 0x191180
+D3DDevice_SetRenderState_StencilEnable               = 0x191210
+D3DDevice_SetRenderState_StencilFail                 = 0x1912A0
+D3DDevice_SetRenderState_YuvEnable                   = 0x191310
+D3DDevice_SetRenderState_OcclusionCullEnable         = 0x191340
+D3DDevice_SetRenderState_StencilCullEnable           = 0x1913B0
+D3DDevice_SetRenderState_RopZCmpAlwaysRead           = 0x191420
+D3DDevice_SetRenderState_RopZRead                    = 0x191440
+D3DDevice_SetRenderState_DoNotCullUncompressed       = 0x191460
+D3DDevice_SetRenderState_MultiSampleMode             = 0x191480
+D3DDevice_SetRenderState_MultiSampleRenderTargetMode = 0x1914C0
+D3DDevice_SetRenderState_MultiSampleAntiAlias        = 0x191500
+D3DDevice_SetRenderState_MultiSampleMask             = 0x191580
+D3DDevice_SetRenderState_SampleAlpha                 = 0x1915D0

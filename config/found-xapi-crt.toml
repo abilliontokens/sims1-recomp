@@ -1,0 +1,21 @@
+# XAPI / XPP / CRT-math names proven in The Sims default.xbe (XDK 5233). Evidence: docs/xtlid-and-xapi.md
+# Not staged. The host XInitDevices XDK_REQUIREs XPP_GamepadType and the XPP_Current/Changed/Previous layout
+# keys. sdk/xdk/5233/layout.toml has those keys as 0x0/0x4/0x8, which XGetDevices 0x1E7EE4 confirms for this
+# image. The two XPP records are listed under [data] here, so this file carries everything its names need.
+# config/found-d3d8-data.toml lists the same two [data] entries at the same addresses.
+# The host XInputOpen (already named) compares the type argument with XPP_GamepadType. Until that datum is
+# merged it rejects the game's gamepad type 0x1E6C30.
+# crt_pow is a confirmation of the existing config value. crt_sin, crt_cos, crt_tan, crt_atan, crt_log,
+# crt_log10 and crt_sqrt are not linked into this image and stay 0.
+[symbols]
+_CIacos          = 0x1759F4
+_CIasin          = 0x176F60
+crt_acos         = 0x175A11
+crt_asin         = 0x176F7D
+crt_pow          = 0x17714C
+XInitDevices     = 0x1E70D5
+XLaunchNewImageA = 0x0C796D
+
+[data]
+XPP_GamepadType    = 0x1E6C30
+XPP_MemoryUnitType = 0x1E6CE0

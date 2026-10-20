@@ -1,0 +1,48 @@
+# DSOUND names proven in The Sims default.xbe (XDK 5233). Evidence: docs/dsound-symbols.md
+# 33 of the 77 DSOUND target names (every [symbols] key of sdk/xdk/5558/signatures.toml with sec = "DSOUND").
+# The other 44 have no code in this image, so they are correct zeros (doc sections 4 and 8).
+# CDirectSoundStream IS linked here, unlike Fuzion Frenzy: 12 of its 21 names are below (doc section 1).
+# Nothing is staged. Every name has a host body in sdk/runtime/xdk/dsound.cpp. The host DirectSoundCreateStream
+# XDK_REQUIREs the two [data] stream vtables below. sdk/xdk/5233/layout.toml already holds the right
+# CDirectSoundStream_Vtable = 0x0 and _Vtable2 = 0x4 for this build (constructor 0x1B6AD1).
+# 0x1B5E6B, 0x1B6038, 0x1B608A and 0x1B60DC are reached only through jmp thunks, so the current recompiler inventory
+# lacks them. sdk/tools/recomp/main.cpp makes every non-zero [symbols] address an entry point on the next run.
+[symbols]
+IDirectSound_Release                = 0x1B54E1
+IDirectSoundBuffer_Release          = 0x1B54F7
+CDirectSoundStream_AddRef           = 0x1B5C0F
+CDirectSoundStream_Release          = 0x1B5C56
+CDirectSoundStream_GetInfo          = 0x1B5CA4
+CDirectSoundStream_Discontinuity    = 0x1B5D0B
+CDirectSoundStream_Flush            = 0x1B5D58
+CDirectSoundStream_GetStatus        = 0x1B5DA3
+CDirectSoundStream_Process          = 0x1B5DF4
+CDirectSoundStream_Pause            = 0x1B5E6B
+CDirectSoundStream_FlushEx          = 0x1B5EBC
+CDirectSoundStream_SetVolume        = 0x1B6038
+CDirectSoundStream_SetMixBins       = 0x1B608A
+CDirectSoundStream_SetMixBinVolumes = 0x1B60DC
+IDirectSound_DownloadEffectsImage   = 0x1B612E
+IDirectSound_SynchPlayback          = 0x1B6155
+IDirectSoundBuffer_SetVolume        = 0x1B616D
+IDirectSoundBuffer_SetMixBins       = 0x1B6189
+IDirectSoundBuffer_SetMixBinVolumes = 0x1B61A5
+IDirectSoundBuffer_Play             = 0x1B61C1
+IDirectSoundBuffer_PlayEx           = 0x1B61E5
+IDirectSoundBuffer_Stop             = 0x1B6209
+IDirectSoundBuffer_Pause            = 0x1B6221
+IDirectSoundBuffer_SetLoopRegion    = 0x1B623D
+IDirectSoundBuffer_GetStatus        = 0x1B625D
+DirectSoundDoWork                   = 0x1B62A5
+IDirectSoundBuffer_SetFormat        = 0x1B66BE
+IDirectSoundBuffer_SetFrequency     = 0x1B66DA
+IDirectSoundBuffer_SetPlayRegion    = 0x1B66F6
+IDirectSoundBuffer_SetBufferData    = 0x1B6BA0
+IDirectSound_CreateSoundBuffer      = 0x1B6EB6
+DirectSoundCreate                   = 0x1B7080
+DirectSoundCreateStream             = 0x1B70C7
+
+# Both in .rdata. The CDirectSoundStream constructor 0x1B6AD1 stores them at [stream + 0] and [stream + 4].
+[data]
+DSound_StreamVtable  = 0x2004C4
+DSound_StreamVtable2 = 0x2004B8

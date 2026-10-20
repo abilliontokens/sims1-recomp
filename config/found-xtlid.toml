@@ -1,0 +1,13 @@
+# .XTLID names proven in The Sims default.xbe (XDK 5233). Evidence: docs/xtlid-and-xapi.md
+# Each address is the one this image's .XTLID publishes for the name's export id, and Bustin' Out (5558),
+# The Urbz and The Sims 2 (5849) publish the same id for the function their configs give that name.
+# ret, regs and the call count equal the 5558 and 5849 records for all five. All five are already in
+# config/game.toml at these addresses, so the merge reports them as confirmations, not additions.
+# Of the other 76 ids, only 0x10031 reaches a config name: it is the 5-byte XInitDevices thunk, emitted at
+# its jmp target in config/found-xapi-crt.toml with the XPP data that name's host body requires.
+[symbols]
+XInputClose        = 0x1E7BD2
+XInputGetState     = 0x1E7DBC
+XInputOpen         = 0x1E7B7C
+XInputSetState     = 0x1E7E28
+XMountUtilityDrive = 0x0C64AB

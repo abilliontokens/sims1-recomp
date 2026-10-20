@@ -1,0 +1,4 @@
+[submodule "sdk"]
+	path = sdk
+	url = https://github.com/abilliontokens/XboxXBERecomp.git
+	branch = sims1-port
