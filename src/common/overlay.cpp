@@ -4,6 +4,7 @@
 // may block, allocate per frame or trust that a context, a window size or a pad exists.
 #include "common/overlay.h"
 
+#include "common/cheats.h"
 #include "common/input_kbm.h"  // kbm::NoteWheel
 
 #include <algorithm>
@@ -556,6 +557,47 @@ void DrawInput() {
          "Tab Back, Shift / Ctrl (or middle button) stick clicks.");
 }
 
+// The game's own cheat codes (common/cheats.h). Each click enters the code the way typing it on the
+// main menu's cheat keyboard does, so a checkbox is the game's own state of that code and what
+// follows is the game's.
+struct CheatRow {
+    cheats::Code code;
+    const char* label;
+    const char* note;
+};
+constexpr CheatRow kCheatRows[] = {
+    {cheats::kFreeAll, "Free items", "FREEALL: buying and building cost nothing. Bills and services are still paid."},
+    {cheats::kMidas, "Unlock all",
+     "MIDAS: every locked object and Create-a-Sim item, Play The Sims and the two-player levels. The "
+     "main menu shows its new entries after it is left and entered again."},
+    {cheats::kPartyMotel, "Party Motel", "PARTY M: the Party Motel two-player level."},
+    {cheats::kPlayTheSims, "Play The Sims",
+     "SIMS: Play The Sims on the main menu, without finishing Get a Life. The game has no way to take it "
+     "back off."},
+    {cheats::kFishEye, "First person", "FISH EYE: in live mode, Black (1) switches to a first-person view and back."},
+    {cheats::kGargamel, "Gargamel",
+     "SHALL, WE, PLAY, A, GAME, then GARGAMEL (the game's hidden code): Sims drawn with bigger heads and "
+     "blue skin."},
+    {cheats::kPictures, "Pictures",
+     "SHALL, WE, PLAY, A, GAME, then PICTURES (hidden too): an extra picture sequence in the Credits."},
+};
+
+void DrawCheats(bool menu) {
+    // a click only queues the code: the title thread enters it on the main menu's next frame. A row
+    // the game cannot turn off again (Play The Sims) stays enabled once it is on, so keyboard and pad
+    // navigation do not lose their place on it; clicking it again changes nothing, as in the game.
+    ImGui::BeginDisabled(!menu);
+    for (const CheatRow& r : kCheatRows) {
+        Row(r.label);
+        bool on = cheats::On(r.code);
+        ImGui::PushID(int(r.code));
+        if (ImGui::Checkbox("##cheat", &on)) cheats::Toggle(r.code);
+        ImGui::PopID();
+        Note(r.note);
+    }
+    ImGui::EndDisabled();
+}
+
 void DrawSettings() {
     const ImGuiIO& io = ImGui::GetIO();
     // centred, auto fitting its height, and resizable once it is up
@@ -585,6 +627,17 @@ void DrawSettings() {
     ImGui::SeparatorText("Input");
     if (BeginRows("##input_rows", label_width)) {
         DrawInput();
+        ImGui::EndTable();
+    }
+    ImGui::SeparatorText("Cheats");
+    const bool menu = cheats::OnMainMenu();
+    Note(menu ? "The game's own codes, typed for you on the main menu's cheat keyboard (both triggers). Each "
+                "click enters a code once, which turns it on or off; the game keeps none of them past a "
+                "restart."
+              : "The game takes its codes only on the main menu with nothing open over it: go back there "
+                "to change one. Codes already on stay on until the game is restarted.");
+    if (BeginRows("##cheat_rows", label_width)) {
+        DrawCheats(menu);
         ImGui::EndTable();
     }
 

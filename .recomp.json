@@ -1,0 +1,49 @@
+{
+  "$schema": "https://recomp.fyi/schema/v1.json",
+  "game": "The Sims",
+  "system": "Xbox",
+  "type": "recomp",
+  "original": {
+    "region": "USA",
+    "serial": "0x4541002F",
+    "sha1": "40ab6f97e8ee3bf4102a5a7820dcb8047fc30097"
+  },
+  "project": "The Sims Recompiled",
+  "status": "in-progress",
+  "targets": [
+    "Windows",
+    "Linux"
+  ],
+  "toolchain": "XboxXBERecomp",
+  "approach": "Static recompilation of the retail XBE to C++; XDK 5233 HLE with a native Vulkan renderer and SDL3 on Linux (no Wine), Direct3D 12 and XAudio2 cross-compiled for Windows",
+  "maintainers": [
+    {
+      "name": "abilliontokens",
+      "link": "https://github.com/abilliontokens"
+    }
+  ],
+  "links": [
+    {
+      "label": "SDK fork",
+      "url": "https://github.com/abilliontokens/XboxXBERecomp"
+    }
+  ],
+  "help": [
+    "Exercise a real controller: no gamepad has ever been plugged into the test machine, so the SDL gamepad path is unexercised",
+    "Audio: the mix runs and the stream opens, but every voice is silent so far (docs/boot-crash.md); no sound has been heard on any run",
+    "Exercise the Windows target (Direct3D 12 + XAudio2): it cross-compiles but has never been run",
+    "Drive the four cheats only confirmed by log (FREEALL, MIDAS, PARTY M, PICTURES) to their visible effects (docs/cheats.md)",
+    "Hor+ ultrawide: the frame target widens, but the title's own aspect path has not been analysed as the siblings' was (docs/guest-projection.md on Bustin' Out is the model)",
+    "The full-screen movies are copied raw over all 480 rows, so the measured 24-row picture crop trims them top and bottom (docs/picture-rect.md); a movie-path exception may be worth it"
+  ],
+  "tags": [
+    "xbox",
+    "static-recomp",
+    "xbe",
+    "xdk-5233",
+    "vulkan",
+    "sdl3",
+    "d3d12"
+  ],
+  "notes": "In progress - boots, plays its intro movies, reaches menus, Create a Sim and a playable household in live mode unattended (17 of 17 runs, 860-2208 draws a frame, docs/playtest.md). XDK 5233 was unsupported by the SDK: the signature set was seeded from 5558 and then signed from this image, the CDevice layout was proven offset by offset (its miniport sits at +0x17C8, 26 of 31 offsets differ from 5558), and 128 of 242 XDK names plus 11 of 12 data are proven with per-name evidence. Two boot defects fixed on the way (docs/boot-crash.md): the unnamed Direct3D_CreateDevice running the NV2A miniport init, and a host body for D3DDevice_InsertCallback whose console body wedged the first frame. The frame-step quantiser is fixed against the host clock: game seconds per real second 1.000 at 60, 144 and uncapped (docs/frame-rate.md). The picture rect is measured, not assumed: 640x432 at y=24 (docs/picture-rect.md). The F1 settings panel (with the game's own typed-word cheats as rows) and the F2 performance panel are verified on screen."
+}

@@ -176,11 +176,11 @@ const app::GameInfo app::kGame = {
     .ui = &overlay::Draw,                    // ImGui drawing each frame: F1 settings, F2 performance
     .pad = &PadHook,                         // keyboard and mouse as port 0, SIMS1_AUTOSTART self-test
     .rumble = nullptr,                       // changes a rumble before it is set
-    // The picture rect is the full back buffer until it is measured from the title's own 2D screen
-    // matrix and its UI reciprocals (the 1/width and 1/height constants its 2D code scales by);
-    // docs/picture-rect.md is where that measurement will be recorded. A height of 0 is the SDK's
-    // "no crop": the host presents every row of whatever frame the title created, 640x480 on the
-    // console, and that is correct unless and until a narrower picture inside it is proven.
-    .picture_top = 0,
-    .picture_height = 0,
+    // The title draws a 640x432 picture 24 rows down its 640x480 back buffer (docs/picture-rect.md):
+    // its renderer stores the picture height as mode height - 48 (sub edx, 30h at 0x12A9C2, stored at
+    // 0x12A9CB) and a y offset of 24.0 (0x12A9D4) just before it creates the 640x480 device, every
+    // back-buffer transform adds that offset (0x12ABF6) and its scissor is {0,24,640,456}; the F3
+    // frame captures light rows 24..455 exactly, in the menus and in a household.
+    .picture_top = 24,
+    .picture_height = 432,
 };
