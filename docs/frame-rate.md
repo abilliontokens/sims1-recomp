@@ -290,6 +290,39 @@ own code and no build flag reaches it. No profiler was available to attribute in
 (`perf` is absent and `/proc/sys/kernel/yama/ptrace_scope` is 1, so `gdb` cannot attach to a
 separately launched process).
 
+## The real bottleneck was the kernel's wakeup storm, not any of the above
+
+Recorded 2026-10-20, after the four levers above were refuted. Same scenes, same walk, arms of
+one binary differing only by env gates (`out/shots/tw2_*.log`; `docs/draw-batching.md` holds the
+attribution work that found it).
+
+Every guest dispatcher wait used to sleep on one process-wide condition variable and every signal
+woke **all** waiters with `notify_all`. This title's guest lock (`sub_001463D0`) is built on a
+semaphore, so `NtReleaseSemaphore` broadcast on every release: the title thread sat blocked
+19-27% of samples inside `kernel::Wait` (g_dispatch the top futex), four worker threads 23-27%
+each, and voluntary context switches ran 1405-2900 per thread per frame. **No in-process counter
+ever showed this** - the SDK's wait instrumentation measures the render-thread handoff, not guest
+kernel waits, and reported `0 waits` throughout. The diagnosis came from `/proc` syscall and
+stack sampling of the running game; when a stall resists the counters, sample the OS first.
+
+The fix (SDK `2ea4a5c`): each parked thread has its own condition variable registered on the
+objects it waits for, and a signal wakes only those. `XBE_NO_TARGETED_WAKE=1` restores the
+broadcast. Measured, live mode, same binary:
+
+| arm | default cam | zoomed out | switches/frame (title) | workers blocked |
+| --- | ---: | ---: | ---: | ---: |
+| broadcast (old behaviour) | 47.1 fps | 33.4 fps | 1405-2137 | 23-27% each |
+| targeted wakeups | **243.6 fps** | **175.6 fps** | **16-32** | g_dispatch gone from the futex lists |
+
+Five times the frame rate. The per-draw costs the earlier sections chased (2.4 ms of XDK draw
+time, 1.3 ms of recording) are now most of what remains, and the render thread - fully hidden at
+60 fps - is the new ceiling at 240: it runs at 99% CPU there. Everything above this section was
+measured **before** this fix; read it as the history of the hunt, not the current state.
+
+The console ran this title at 30 fps, so per-call consumers tuned for that rate now step too
+fast at 175+: the camera zoom is the known one (owner-reported; fix in progress,
+`docs/zoom-rate.md`).
+
 ## Not covered
 
 - Live mode above ~58 fps: this machine cannot run the title thread faster in a household, so the
