@@ -214,29 +214,45 @@ Decision: **no per-call wrapper was added.** Nothing measured off once the delta
 
 ## Throughput: where the frame goes, and four levers that do not move it
 
-Recorded 2026-10-20, uncapped (`fps_cap = 0`, `vsync = false`), borderless 3440x1440, render
-scale 3.000, in a loaded household at 1450-1760 draws a frame. Driven by the `docs/playtest.md`
-walk, 10 steady-state `perf:` seconds per run, `hdd/` wiped before every run so each build loads
-the same household.
+Recorded 2026-10-20, uncapped (`fps_cap = 0`, `vsync = false`), in a loaded household. Driven by
+the `docs/playtest.md` walk, 10 steady-state `perf:` seconds per run, `hdd/` wiped before every
+run.
 
-**The ceiling on this machine is 62.9 fps** (three baseline runs: 62.7, 64.8, 61.1; per-run sd
-1.6-2.1). The 60 fps normally seen is the `fps_cap` setting, not the engine.
+**The ceiling depends on the display configuration, and the first version of this section quoted
+the wrong one.** The four build-lever runs below were measured **windowed 1280x960 at render
+scale 2.000**, which is not how the port is normally run; at the owner's real configuration -
+borderless 3440x1440, `render_percent 100`, render scale **3.000**, target 1920x1440 - the same
+build measures **58.0 fps** at 1397 draws a frame, not the 62.9 the windowed runs gave. The
+lever comparison below is still internally valid, because all five builds were measured in the
+same windowed configuration; the *ceiling* is the 58.0 figure.
 
-**The title thread is the whole critical path.** Every live-mode run logs
-`title thread per frame: recording X ms, waiting 0.00 ms (0.0 waits)`: the title thread never
-waits for the renderer, so the render thread's 3.6 ms is fully hidden and work taken off it buys
-nothing. Of a 15.9 ms frame:
+**Frame rate here is scene-driven, and draw count is the best predictor.** A run at 1585
+draws/frame measured 48.1 fps against 58.0 at 1397 - a 13% heavier scene costs 17% of the frame
+rate. Run-to-run scene variation is +/-15%, which is larger than any build-lever effect below,
+so a single A/B pair proves nothing unless draw counts are reported beside it. Quote **ms per
+1000 draws** alongside fps.
+
+**The title thread is the whole critical path, at both configurations.** Every live-mode run
+logs `title thread per frame: recording X ms, waiting 0.00 ms (0.0 waits)`: the title thread
+never waits for the renderer, so the render thread's time is fully hidden and work taken off it
+buys nothing. Lowering the internal resolution therefore does **not** raise the frame rate -
+`render_percent 50` was measured and did not (its run was 13% heavier in draws and came out
+slower). Of the 17.2 ms frame at the owner's configuration:
 
 | Title-thread leaf | ms/frame | share |
 | --- | ---: | ---: |
-| guest game logic | ~11.4 | 73% |
-| inside XDK draw calls (`in XDK draws`), of it `sendstate` 1.3 | 2.4 | 15% |
-| renderer command recording | 1.8 | 12% |
-| *(render thread, overlapped: draw 3.3, clear 0.07, present 0.23)* | *3.6* | *not on the path* |
+| guest game logic | ~9.1 | 53% |
+| inside XDK draw calls (`in XDK draws`), of it `sendstate` 1.3 | 2.4 | 14% |
+| renderer command recording | 1.3 | 8% |
+| *(render thread, overlapped: draw 3.95, clear 0.07, present 0.36)* | *4.35* | *not on the path* |
 
-Four build-level levers were each built and measured against that baseline. **None is a win:**
+The CPU is not the limit in the trivial sense: all 12 cores run at 3.49 GHz under load, at
+57 degrees C, with no cpufreq throttling.
 
-| Build | fps (mean of 10 s) | guest ms | vs baseline |
+Four build-level levers were each built and measured against each other, **all windowed
+1280x960 at render scale 2.000** (not the owner's configuration; see above):
+
+| Build (windowed 1280x960) | fps (mean of 10 s) | guest ms | vs baseline |
 | --- | ---: | ---: | ---: |
 | baseline, `-O2` guest / `-O3` host, `-march=x86-64-v2` | **62.9** | 12.3 | - |
 | `-march=znver2` (this CPU: AVX2, BMI1/2, FMA) | 60.6 | 12.7 | -4% |
