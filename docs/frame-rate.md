@@ -304,6 +304,11 @@ each, and voluntary context switches ran 1405-2900 per thread per frame. **No in
 ever showed this** - the SDK's wait instrumentation measures the render-thread handoff, not guest
 kernel waits, and reported `0 waits` throughout. The diagnosis came from `/proc` syscall and
 stack sampling of the running game; when a stall resists the counters, sample the OS first.
+The audio carried the same lesson from the other end: "Linux audio is silent" lived in two docs
+for hours because every benchmark ran under `XBE_MUTE=1` and the silent readings were read from
+post-movie log tails - an unmuted run showed the mix identical to the audible Windows one. A
+diagnostic environment variable that changes the behaviour under test invalidates every
+conclusion drawn from runs that set it; re-measure with it off before believing a defect.
 
 The fix (SDK `2ea4a5c`): each parked thread has its own condition variable registered on the
 objects it waits for, and a signal wakes only those. `XBE_NO_TARGETED_WAKE=1` restores the
