@@ -29,7 +29,7 @@
     }
   ],
   "help": [
-    "Camera zoom steps per poll and runs ~6x console speed above 60 fps now that live mode reaches 175+ (docs/zoom-rate.md); check rotate and cursor rates against a console too",
+    "Camera zoom: the per-call step is now rescaled by the call rate (sub_00011ED0; SIMS1_NO_ZOOMRATE=1 to compare). The uncapped-vs-60 A/B was cut short by a release call, so confirm by feel and check rotate/cursor rates against a console too (docs/zoom-rate.md)",
     "If no sound is heard on Linux: the port mixes and delivers audio correctly (proven to a RUNNING sink); this machine's only output is the HDMI monitor at 40% - check the monitor's own speakers. In-game music/dialogue beyond the intro movie has not been listened to by a human",
     "Exercise the Windows target (Direct3D 12 + XAudio2): it cross-compiles but has never been run",
     "Drive the four cheats only confirmed by log (FREEALL, MIDAS, PARTY M, PICTURES) to their visible effects (docs/cheats.md)",
