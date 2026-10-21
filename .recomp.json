@@ -30,7 +30,7 @@
   ],
   "help": [
     "Camera zoom steps per poll and runs ~6x console speed above 60 fps now that live mode reaches 175+ (docs/zoom-rate.md); check rotate and cursor rates against a console too",
-    "Audio is silent on Linux/SDL while the identical guest code is audible through XAudio2 under Wine (docs/boot-crash.md) - the SDL audio path is the defect",
+    "If no sound is heard on Linux: the port mixes and delivers audio correctly (proven to a RUNNING sink); this machine's only output is the HDMI monitor at 40% - check the monitor's own speakers. In-game music/dialogue beyond the intro movie has not been listened to by a human",
     "Exercise the Windows target (Direct3D 12 + XAudio2): it cross-compiles but has never been run",
     "Drive the four cheats only confirmed by log (FREEALL, MIDAS, PARTY M, PICTURES) to their visible effects (docs/cheats.md)",
     "Hor+ ultrawide: the frame target widens, but the title's own aspect path has not been analysed as the siblings' was (docs/guest-projection.md on Bustin' Out is the model)",

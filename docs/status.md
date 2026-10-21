@@ -25,7 +25,7 @@ distinction in this document.
 | Cheats | no pad-sequence table exists in this game — codes are words typed on the main menu's trigger-held keyboard (`sub_0005E6A0`); the F1 panel types them through the menu's own update; SIMS, FISH EYE and GARGAMEL confirmed visually, the other four by log (`docs/cheats.md`) |
 | F1 / F2 panels | verified on screen: F1 settings (with the Cheats section), F2 frame times |
 | Audio, Windows/Wine | **sounding**: XAudio2 mixed 89 stream packets at peak 0.44 during the Wine run's intro movie |
-| Audio, Linux | **silent**: the same run shape on SDL mixes 48 voices at `sounding=0`, `plays=0`, peak 0.0000 — the Linux silence is in the SDL audio path, not in the guest's DirectSound usage, because the identical guest code is audible through XAudio2 (`docs/boot-crash.md`) |
+| Audio, Linux | **works** — the earlier "silent" finding was a measurement artifact. Proven end to end (`out/shots`, run of 2026-10-20 23:39): the guest stream Processes and completes exactly the 89 packets the Wine/XAudio2 run does, the mixer peaks 0.38-0.46 during the intro movie, the SDL callback submits those same peaks, and the sink goes `RUNNING`, unmuted. The silent readings came from post-movie log tails and from every benchmark running under `XBE_MUTE`. If no sound is heard on hardware, check the HDMI monitor's own volume — the machine's only sink is `hdmi-stereo` at 40% |
 
 ## The two boot defects, in one line each
 

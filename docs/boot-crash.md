@@ -61,8 +61,12 @@ at 17.2 s. Per-second perf lines show the intro movie's signature: 1 draw a fram
 
 ## What has not been verified
 
-- Audio: the mix runs and the stream opens, but every voice is silent so far (`sounding=0`) — no
-  audio has been heard, on any run.
+- Audio, corrected 2026-10-20 23:39: **Linux audio works**. The silent readings that fed this
+  note were post-movie log tails and benchmark runs under `XBE_MUTE`. A no-mute run shows the
+  guest stream Processing the same 89 packets the Wine/XAudio2 run completes, the mixer peaking
+  0.38-0.46 during the intro movie, the SDL callback submitting those peaks, and the sink going
+  `RUNNING` unmuted. No defect remains on the port side; whether the monitor's speakers are on
+  is a desk question.
 - The F3 frame capture has not yet produced a `frame.txt` on this title (the capture directory
   handling is being re-run); the presents logged above are the renderer's own counts, which are the
   honest signal that frames are being handed to the swapchain.
