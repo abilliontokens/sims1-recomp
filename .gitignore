@@ -46,3 +46,7 @@ __pycache__/
 
 # F3 frame captures (game-rendered, derived from the disc)
 /cap/
+
+# clang PGO counter dumps from benchmark runs
+*.profraw
+*.profdata

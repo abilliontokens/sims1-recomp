@@ -212,6 +212,68 @@ Decision: **no per-call wrapper was added.** Nothing measured off once the delta
 | --- | --- |
 | `SIMS1_NO_STEP` | Both frame-step wrappers run the image's own functions untouched: the 1/60 s floor and three-frame average, game speed tied to frame rate. |
 
+## Throughput: where the frame goes, and four levers that do not move it
+
+Recorded 2026-10-20, uncapped (`fps_cap = 0`, `vsync = false`), borderless 3440x1440, render
+scale 3.000, in a loaded household at 1450-1760 draws a frame. Driven by the `docs/playtest.md`
+walk, 10 steady-state `perf:` seconds per run, `hdd/` wiped before every run so each build loads
+the same household.
+
+**The ceiling on this machine is 62.9 fps** (three baseline runs: 62.7, 64.8, 61.1; per-run sd
+1.6-2.1). The 60 fps normally seen is the `fps_cap` setting, not the engine.
+
+**The title thread is the whole critical path.** Every live-mode run logs
+`title thread per frame: recording X ms, waiting 0.00 ms (0.0 waits)`: the title thread never
+waits for the renderer, so the render thread's 3.6 ms is fully hidden and work taken off it buys
+nothing. Of a 15.9 ms frame:
+
+| Title-thread leaf | ms/frame | share |
+| --- | ---: | ---: |
+| guest game logic | ~11.4 | 73% |
+| inside XDK draw calls (`in XDK draws`), of it `sendstate` 1.3 | 2.4 | 15% |
+| renderer command recording | 1.8 | 12% |
+| *(render thread, overlapped: draw 3.3, clear 0.07, present 0.23)* | *3.6* | *not on the path* |
+
+Four build-level levers were each built and measured against that baseline. **None is a win:**
+
+| Build | fps (mean of 10 s) | guest ms | vs baseline |
+| --- | ---: | ---: | ---: |
+| baseline, `-O2` guest / `-O3` host, `-march=x86-64-v2` | **62.9** | 12.3 | - |
+| `-march=znver2` (this CPU: AVX2, BMI1/2, FMA) | 60.6 | 12.7 | -4% |
+| generated guest code at `-O3` | 60.4 | 12.8 | -4% |
+| clang PGO, two merged gameplay profiles | 57.9 | 13.9 | -8% |
+
+Notes on the method, because two of these figures were wrong on the first attempt:
+
+- An earlier PGO run measured -34%. That number was **contaminated**: its build directory had a
+  different `hdd/` (an empty one against a saved household), so the two builds loaded different
+  scenes. Re-run with `hdd/` wiped for both, the honest figure is -8%.
+- The PGO build was checked to be use-only (`grep profile-instr out/build/linux-pgo/build.ninja`
+  shows `profile-instr-use` alone, no stacked `-generate`), and its diagnostics were left
+  unsuppressed: 2 `-Wprofile-instr-out-of-date` and a handful of
+  `no profile data available` for vendored SDL and libm sources only. The guest code and the SDK
+  runtime matched the profile, so the result is PGO genuinely applied, not PGO misconfigured.
+- The profile must come from gameplay. A first profile collected over one boot-to-household run
+  was dominated by texture decode (`gpu::DecodeLevel`, `gpu::CopySurfaceMemory`, `sat<uint8_t>`),
+  which is loading work: in steady live mode the counters read `0.0 tex uploads, 0.0 new tex`.
+- Collecting a profile at all needs `-fprofile-continuous`. The harness ends a run with `SIGTERM`
+  and `sdk/runtime/app/main_sdl.cpp` calls `_exit(128 + sig)`, which skips the profile writeout;
+  without continuous mode every `.profraw` is 0 bytes.
+- `-march=znver2` and guest `-O3` both lose on instruction-cache pressure across 12889 large
+  recompiled functions. `[INFERENCE]`: not separately measured, but consistent with both losing
+  by the same ~4% while the host-side `draw` time is unchanged.
+
+The sibling ports' renderer work is already inherited and is **not** a remaining lever here: the
+SDK branch descends from `04bea96` (SendState dirty-masking, host built optimised) and `7575ecb`
+(no per-draw re-recording of what the last draw bound).
+
+What is left, and its honest size: `sendstate` (1.3 ms) plus command recording (1.8 ms) are the
+only title-thread costs the host owns. Removing **all** of both would leave 11.4 ms, about 88 fps;
+a realistic cut is 8-10%, so roughly 70 fps. Guest game logic, 73% of the frame, is the title's
+own code and no build flag reaches it. No profiler was available to attribute inside it
+(`perf` is absent and `/proc/sys/kernel/yama/ptrace_scope` is 1, so `gdb` cannot attach to a
+separately launched process).
+
 ## Not covered
 
 - Live mode above ~58 fps: this machine cannot run the title thread faster in a household, so the
