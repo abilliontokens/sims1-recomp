@@ -12,17 +12,13 @@
 # classifies what is actually on screen (tools/classify_screen.py), and only then
 # presses the next key. Menu transitions swallow presses (seen twice in attended
 # runs), so a fixed schedule drifts; this loop retries the press that a transition
-# ate and refuses to advance until the expected screen is showing. The walk itself
-# is the one the sibling Sims: Bustin' Out port's docs/playtest.md records: START
-# (title -> main menu), A (Continue or Bust Out -> Select Save), A (saved Sim ->
-# Customize, or an empty slot -> name entry -> A accepts each default name ->
-# Create-a-Sim), RIGHT x3 (confirm icon), A (save question), A (YES) -> household,
-# A dismisses the greeting dialogue.
-#
-# CAVEAT: that walk, and the screen states classify_screen.py tells apart, came over
-# from the sibling unchanged. Neither has been measured on The Sims' screens
-# yet, so until both are redone for this title the drive stops at the first wait it
-# cannot satisfy; the screenshots it took up to there are still valid.
+# ate and refuses to advance until the expected screen is showing. The walk is
+# this title's own, measured and recorded in docs/playtest.md: START at the
+# "Please press START" title, A five times (loading ends by itself, the main
+# menu takes its first option, Get a Life takes Get a Life, the lot select
+# lands on the furnished starter lot), A at "Start house", DOWN then A at the
+# save question (No, so nothing is written), then A through the tutorial
+# dialogs to the household's live mode. It reached live mode in 17 of 17 runs.
 set -uo pipefail
 cd "$(dirname "$0")/.."
 
@@ -95,41 +91,41 @@ press_until() {
     return 1
 }
 
-# 1. intro movies (skippable with START) -> title -> main menu
-wait_for "intro blue" 30 || exit 1
-press_until START "blue" || exit 1
+# 1. intro movies, skippable with START, then the "Please press START" title
+wait_for "intro" 40 || exit 1
+press_until START "dialog menu" || exit 1
+shot title
+
+# 2. title -> loading -> main menu. The blue-gradient family (loading, main
+#    menu, Get a Life) is all "menu" to the classifier and all answered with
+#    A. The measured walk is START, then A five times (docs/playtest.md):
+#    loading ends by itself, the menu takes its first option, Get a Life
+#    takes Get a Life, and the lot select lands on the furnished starter lot.
+for i in 1 2 3 4 5; do
+    press_until A "menu cas dialog" 6 || exit 1
+done
 shot menu
 
-# 2. main menu -> Select Save (Continue when a save exists, else Bust Out; both
-#    land on Select Save with the first slot highlighted)
-press_until A "name cas" || exit 1
-
-# 3. Select Save -> name entry (empty slot) or straight to Create-a-Sim (saved Sim)
-s="$(screen)"
-if [ "$s" = name ]; then
-    shot name
-    press_until A "name cas" || exit 1   # last name accepted (cursor starts on ENTER)
-    press_until A "cas" || exit 1        # first name accepted
-fi
-wait_for "cas" 20 || exit 1
-shot cas
-
-# 4. Create-a-Sim: RIGHT x3 to the confirm icon, A, then A (YES) -> household
-press RIGHTx3
-wait_for "cas" 6 || exit 1
-press_until A "question" || exit 1
+# 3. "Start house" -> the save question: DOWN selects No (so nothing is
+#    written), A accepts. Both screens classify as dialog.
+press_until A "dialog" 8 || exit 1
+press DOWN
+press_until A "dialog live" 8 || exit 1
 shot question
-press_until A "house dialogue loading" || exit 1
 
-# 5. the household load takes a while; a greeting dialogue may be up first
-wait_for "house dialogue" 40 || exit 1
-if [ "$(screen)" = dialogue ]; then
-    shot dialogue
+# 4. the tutorial dialogs: A through each until the household's live mode.
+#    Live mode classifies as "live" (a dark 3-D scene); each dialog is
+#    "dialog". The household load in between shows intro/menu frames.
+for i in 1 2 3 4 5 6 7 8; do
+    s="$(screen)"
+    [ "$s" = live ] && break
     press A
-    wait_for "house" 15 || exit 1
-fi
-shot house
-sleep 8; shot house2
+    wait_for "dialog live" 10 || true
+done
+wait_for "live" 60 || exit 1
+shot live
+sleep 8
+shot live2
 
 # KEEP=1 leaves the game up and in the household, so the owner can take it over
 # from the state the drive reached instead of starting the walk again by hand.
@@ -142,5 +138,7 @@ else
 fi
 echo "--- draws/frame seen ---"
 grep -o 'per frame [0-9]* draws.*stalealloc [0-9]*' "$LOG" | tail -2
+echo "--- fps seen ---"
+grep -oE 'perf: [0-9.]+ fps' "$LOG" | tail -5
 echo "--- present geometry ---"
 grep -o 'vulkan: present .*' "$LOG" | tail -1

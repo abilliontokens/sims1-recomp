@@ -2,27 +2,36 @@
 """Classify a screenshot of the running port's window into a walk state.
 
 Usage: classify_screen.py <png>  ->  one word on stdout:
-  intro | blue | saveselect | name | cas | question | house | dialogue | unknown
+  intro | menu | cas | dialog | live | unknown
 
 The input is a capture of the game WINDOW (tools/shot_game.sh uses spectacle
--a). It used to be a capture of the whole desktop, and picture() had to find
-the game inside it by looking for bright columns - which finds the wallpaper
-instead as soon as the game is windowed on anything but a black desktop. That
-misread a loaded household as "intro" through six retries. All this has to do
-now is trim the pillarbox or letterbox the present leaves inside the window.
+-a). The picture is trimmed of the near-black pillarbox the present leaves
+inside the window; a mostly-black frame trims to nothing and answers "intro"
+(a movie or a black loading frame - both are only ever waited on).
 
-"blue" covers the title and the main menu (both are blue-gradient screens the
-walk treats alike: START then A). The probes are coarse colour facts measured
-on the sibling Sims: Bustin' Out port's real screens (its docs/playtest.md):
-the name keyboard is a bright-lettered grid low in a dark picture, the
-household is a lot whose clock pill is bright blue at the picture's top right,
-its greeting dialogue is a bright translucent panel in the centre, and
-Create-a-Sim is a warm brown room whose save question covers the centre in blue.
+Every probe below is measured on this title's own screenshots (out/shots/,
+the runs docs/playtest.md records). This game's screens are not the sibling
+port's blue-gradient scheme:
 
-CAVEAT: none of these probes has been measured on The Sims' screens yet.
-The window trim in picture() and the black-frame "intro" answer hold for any
-title; the named states are the sibling's and have to be re-measured and
-renamed for this game before tools/shot_game.sh can walk it past the intro.
+  intro                     black frame: movies, the first loading frames
+  menu   blue(top) > 0.35   the blue-gradient family: the "Loading, please
+         and blue(TR) > 0.30 wait..." screen with its progress pill, the main
+                            menu and the Get a Life screen share this look
+                            (probe60_after_load / pic_after_menu /
+                            probe60_getalife1: blue(top) .47-.59, blue(TR)
+                            .49-.59). The walk treats them alike: press A.
+  cas    blue(top) > 0.35   Create a Sim: the blue top band without the
+         and blue(TR) < 0.15 corner pill (probe60_cas2: .405 top, .038 TR).
+  dialog dark with a bright the text-on-dark screens: the "Please press
+         low band > 0.10     START" title, the save question and the tutorial
+                            dialogs (probe60_t30 .19, after_start1 .20,
+                            pic_after_movie13 .36 white low, blue(top) 0).
+                            Merged deliberately: the walk answers all of them
+                            with A.
+  live   dark, mean < 35,    live mode: a dark 3-D scene with little bright
+         little bright text anywhere (probe60_live1: mean 20.6, white(low)
+                            0.000, blue 0.03).
+  unknown                   bright but none of the above.
 """
 import sys
 
@@ -38,67 +47,47 @@ def picture(img):
     manager's own border. A mostly-black frame (a movie, a loading screen)
     trims to nothing, which the caller reads as "intro".
     """
-    lit = img.sum(axis=2) > 60
-    cols = np.where(lit.mean(axis=0) > 0.08)[0]
-    rows = np.where(lit.mean(axis=1) > 0.08)[0]
-    if len(cols) < 50 or len(rows) < 50:
+    h, w, _ = img.shape
+    bright = img.mean(axis=2)
+    rows = np.where(bright.max(axis=1) > 20)[0]
+    cols = np.where(bright.max(axis=0) > 20)[0]
+    if not len(rows) or not len(cols):
         return None
-    return img[rows[0]:rows[-1] + 1, cols[0]:cols[-1] + 1]
+    return img[rows.min():rows.max() + 1, cols.min():cols.max() + 1]
 
 
 def main() -> int:
-    img = np.asarray(Image.open(sys.argv[1]).convert("RGB")).astype(int)
-    pic = picture(img)
-    if pic is None or pic.shape[0] < 50:
+    img = np.asarray(Image.open(sys.argv[1]).convert("RGB"), dtype=np.float32)
+    p = picture(img)
+    if p is None:
         print("intro")  # a black frame: movies / loading
         return 0
-    ph, pw, _ = pic.shape
+    h, w, _ = p.shape
 
     def reg(fx0, fy0, fx1, fy1):
-        return pic[int(ph * fy0):int(ph * fy1), int(pw * fx0):int(pw * fx1)]
+        return p[int(fy0 * h):int(fy1 * h), int(fx0 * w):int(fx1 * w)]
 
     def mean(r):
-        return r.reshape(-1, 3).mean(axis=0)
+        return float(r.mean())
 
     def bluefrac(r):
-        return float(((r[:, :, 2] > 140) & (r[:, :, 2] > r[:, :, 0] + 40)).mean())
+        return float(((r[:, :, 2] > r[:, :, 0] + 25) & (r[:, :, 2] > 90)).mean())
 
     def whitefrac(r):
-        return float((r.min(axis=2) > 180).mean())
+        return float((r.mean(axis=2) > 200).mean())
 
-    centre = reg(0.35, 0.35, 0.65, 0.65)
-    lowmid = reg(0.30, 0.60, 0.70, 0.95)
-    clock = reg(0.84, 0.0, 0.99, 0.09)
-    cm, pm = mean(centre), float(pic.reshape(-1, 3).mean())
-
-    # the intro movie's sunset frame: warm orange centre, no UI anywhere
-    if cm[0] > cm[2] + 80 and cm[0] > 150:
-        print("intro")
-        return 0
-    left = mean(reg(0.02, 0.30, 0.20, 0.80))
-    # household: dark lot, bright-blue clock pill top-right; dialogue covers centre
-    if pm < 100 and bluefrac(clock) > 0.015:
-        print("dialogue" if bluefrac(centre) > 0.5 else "house")
-        return 0
-    # the warm CAS room: name entry and the save question both overlay it in blue
-    if left[0] > left[2] + 25:
-        if bluefrac(centre) > 0.6:
-            print("name" if whitefrac(lowmid) > 0.04 else "question")
-        else:
-            print("cas")
-        return 0
-    if bluefrac(centre) > 0.6:
-        print("dialogue" if pm < 100 else "blue")
-        return 0
-    if cm[0] > cm[2] + 25:
-        print("cas")
-        return 0
-    if bluefrac(lowmid) > 0.5:
-        print("blue")
-        return 0
-    print("intro")  # no UI facts matched: a movie frame (only waited on at launch)
+    top, low, tr = reg(0, 0, 1, .25), reg(0, .55, 1, .85), reg(.75, 0, 1, .2)
+    bt, bl, btr = bluefrac(top), whitefrac(low), bluefrac(tr)
+    if bt > 0.35:
+        print("menu" if btr > 0.30 else "cas")
+    elif bl > 0.10:
+        print("dialog")
+    elif mean(p) < 35.0:
+        print("live")
+    else:
+        print("unknown")
     return 0
 
 
 if __name__ == "__main__":
-    raise SystemExit(main())
+    sys.exit(main())
