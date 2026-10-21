@@ -10,15 +10,26 @@
 #
 # The drive is per screen, not on a timer: after every press the script screenshots,
 # classifies what is actually on screen (tools/classify_screen.py), and only then
-# presses the next key. Menu transitions swallow presses (seen twice in attended
-# runs), so a fixed schedule drifts; this loop retries the press that a transition
-# ate and refuses to advance until the expected screen is showing. The walk is
-# this title's own, measured and recorded in docs/playtest.md: START at the
-# "Please press START" title, A five times (loading ends by itself, the main
-# menu takes its first option, Get a Life takes Get a Life, the lot select
-# lands on the furnished starter lot), A at "Start house", DOWN then A at the
-# save question (No, so nothing is written), then A through the tutorial
-# dialogs to the household's live mode. It reached live mode in 17 of 17 runs.
+# presses the next key. A press a transition swallows is retried, and the script
+# refuses to advance until the expected screen is showing. The walk is the one
+# docs/playtest.md records and proved screen by screen with draw counts (the probe60
+# run, then 17 of 17 runs to live mode), driven through the same SIMS1_STEP pad
+# tokens:
+#   intro movies (end by themselves) -> title "Please press START to begin": START
+#   -> "Loading, please wait..." -> main menu (Get a Life highlighted): A
+#   -> Get a Life (Start a Life highlighted): A
+#   -> Create a Sim, last name (default NEWBIE, cursor on Done): A
+#   -> only once a NEWBIE save exists on hdd/ (any run that answered YES has
+#      written one): "Warning! There is already a 'Get a Life' save game of the
+#      name NEWBIE ... Press (A) to proceed": A (proceeding writes nothing)
+#   -> first name (default PAT): A
+#   -> Create a Sim with Pat at the mirror, focus on DONE: A
+#   -> loading -> the logo with "(A) Start house": A
+#   -> "Would you like to save before starting this house?" YES highlighted:
+#      DOWN to NO, then A (nothing is written to hdd/)
+#   -> the household, with tutorial dialogues: A dismisses each as it comes up
+#      (Welcome to The Sims, then Pat's first lines and more, some 20 s apart)
+#   -> live mode, HUD up, clock running.
 set -uo pipefail
 cd "$(dirname "$0")/.."
 
@@ -61,17 +72,22 @@ echo "launched pid $PID (step file $STEP)"
 shot() { spectacle -b -n -a -o "out/shots/${TAG}_$1.png" >/dev/null 2>&1; }
 alive() { kill -0 "$PID" 2>/dev/null; }
 press() { printf '%s' "$1" > "$STEP"; sleep 2; printf 'NONE' > "$STEP"; }
-screen() { # classify the newest screenshot -> state word on stdout
+screen() { # classify a fresh screenshot -> state word on stdout
     shot probe
     python3 tools/classify_screen.py "out/shots/${TAG}_probe.png" 2>/dev/null || echo unknown
 }
+# keep the screenshot the last state was read from, as the stage's own
+keep() { cp -f "out/shots/${TAG}_probe.png" "out/shots/${TAG}_$1.png"; }
 
 # Wait until classify says one of the given states (re-screenshotting), or give up.
+# The state seen is left in SEEN.
+SEEN=""
 wait_for() {
     local want="$1" tries="${2:-40}" s i
     for ((i = 0; i < tries; i++)); do
         alive || { echo "died while waiting for $want"; return 1; }
         s="$(screen)"
+        SEEN="$s"
         case " $want " in *" $s "*) echo "screen: $s"; return 0 ;; esac
         sleep 3
     done
@@ -81,7 +97,7 @@ wait_for() {
 
 # Press a key until the screen becomes one of the given states.
 press_until() {
-    local key="$1" want="$2" tries="${3:-6}" s i
+    local key="$1" want="$2" tries="${3:-6}" i
     for ((i = 0; i < tries; i++)); do
         press "$key"
         if wait_for "$want" 8; then return 0; fi
@@ -91,41 +107,66 @@ press_until() {
     return 1
 }
 
-# 1. intro movies, skippable with START, then the "Please press START" title
-wait_for "intro" 40 || exit 1
-press_until START "dialog menu" || exit 1
-shot title
+# 1. intro movies (about 27 s, they end by themselves) -> title
+wait_for "title" 40 || exit 1
+keep title
 
-# 2. title -> loading -> main menu. The blue-gradient family (loading, main
-#    menu, Get a Life) is all "menu" to the classifier and all answered with
-#    A. The measured walk is START, then A five times (docs/playtest.md):
-#    loading ends by itself, the menu takes its first option, Get a Life
-#    takes Get a Life, and the lot select lands on the furnished starter lot.
-for i in 1 2 3 4 5; do
-    press_until A "menu cas dialog" 6 || exit 1
-done
-shot menu
+# 2. title -> "Loading, please wait..." -> main menu
+press_until START "loading menu" || exit 1
+[ "$SEEN" = loading ] && keep loading
+wait_for "menu" 20 || exit 1
+keep menu
 
-# 3. "Start house" -> the save question: DOWN selects No (so nothing is
-#    written), A accepts. Both screens classify as dialog.
-press_until A "dialog" 8 || exit 1
-press DOWN
-press_until A "dialog live" 8 || exit 1
-shot question
+# 3. main menu -> Get a Life -> Create a Sim's last name -> first name -> Create a Sim
+#    (A x5 in all, the fifth below at Create a Sim)
+press_until A "getalife" || exit 1
+keep getalife
+press_until A "lastname" || exit 1
+keep lastname
+press_until A "firstname overwrite" || exit 1
+if [ "$SEEN" = overwrite ]; then  # only with a NEWBIE save already on hdd/
+    keep overwrite
+    press_until A "firstname" || exit 1
+fi
+keep firstname
+press_until A "cas" || exit 1
+keep cas
 
-# 4. the tutorial dialogs: A through each until the household's live mode.
-#    Live mode classifies as "live" (a dark 3-D scene); each dialog is
-#    "dialog". The household load in between shows intro/menu frames.
-for i in 1 2 3 4 5 6 7 8; do
+# 4. Create a Sim -> loading -> "(A) Start house". The "(A) Start house" line blinks,
+#    and its off phase is the bare logo, which classifies as "loading" (the 4 known
+#    misreads in classify_screen.py), so wait on until a lit frame is caught.
+press_until A "loading starthouse" || exit 1
+[ "$SEEN" = loading ] && keep loading2
+wait_for "starthouse" 40 || exit 1
+keep starthouse
+
+# 5. the save question: DOWN to NO, A (nothing is saved)
+press_until A "question" || exit 1
+keep question
+press_until DOWN "questionno" || exit 1
+keep questionno
+press_until A "dialogue house" || exit 1
+
+# 6. the household: A dismisses each tutorial dialogue as it comes up; they arrive up
+#    to ~25 s apart (docs/playtest.md), so live mode is only called reached after 45 s
+#    of household with no dialogue. A is never pressed without a dialogue up: in live
+#    mode it opens the pie menu or walks Pat somewhere.
+n=0 quiet_since=$SECONDS
+while ((SECONDS - quiet_since < 45)); do
+    alive || { echo "died in the household"; exit 1; }
     s="$(screen)"
-    [ "$s" = live ] && break
-    press A
-    wait_for "dialog live" 10 || true
+    case "$s" in
+        dialogue)
+            n=$((n + 1)); keep "dialogue$n"; echo "screen: dialogue ($n), A"
+            press A; quiet_since=$SECONDS ;;
+        house) sleep 3 ;;
+        *) echo "screen: $s in the household"; sleep 3 ;;
+    esac
+    if ((n > 12)); then echo "more than 12 dialogues: A is not dismissing them"; exit 1; fi
 done
-wait_for "live" 60 || exit 1
-shot live
-sleep 8
-shot live2
+wait_for "house" 5 || exit 1
+keep house
+sleep 8; shot house2
 
 # KEEP=1 leaves the game up and in the household, so the owner can take it over
 # from the state the drive reached instead of starting the walk again by hand.
@@ -138,7 +179,6 @@ else
 fi
 echo "--- draws/frame seen ---"
 grep -o 'per frame [0-9]* draws.*stalealloc [0-9]*' "$LOG" | tail -2
-echo "--- fps seen ---"
-grep -oE 'perf: [0-9.]+ fps' "$LOG" | tail -5
+grep -o 'per frame [0-9]* draws' "$LOG" | sort -k3 -n | tail -1 | sed 's/^/peak: /'
 echo "--- present geometry ---"
 grep -o 'vulkan: present .*' "$LOG" | tail -1
