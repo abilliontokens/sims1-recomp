@@ -16,10 +16,22 @@ echo "  The Sims - build (${PRESET})"
 echo "  ================================================"
 echo
 
+# The port itself runs straight from a disc image in assets. The build needs the XBE as a file:
+# CMake hashes it and the recompiler reads its sections, so take that one file out of the image.
 if [ ! -f "assets/${GAME_XBE}" ]; then
-    echo "  Put the full game files in the assets folder first:" >&2
+    ISO=$(ls -1 assets/*.iso assets/*.ISO 2>/dev/null | head -n 1 || true)
+    if [ -n "${ISO:-}" ] && command -v python3 >/dev/null 2>&1; then
+        echo "      taking ${GAME_XBE} out of ${ISO}"
+        python3 tools/xiso_extract.py extract "${ISO}" assets --only "${GAME_XBE}"
+    elif [ -n "${ISO:-}" ]; then
+        echo "  ${ISO} is here but python3 is not, so ${GAME_XBE} cannot be taken out of it." >&2
+    fi
+fi
+
+if [ ! -f "assets/${GAME_XBE}" ]; then
+    echo "  Put the game in the assets folder first:" >&2
     echo "    $(pwd)/assets" >&2
-    echo "  It needs ${GAME_XBE} with the game's folders beside it." >&2
+    echo "  Either the disc image as a .iso, or ${GAME_XBE} with the game's files beside it." >&2
     exit 1
 fi
 

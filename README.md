@@ -19,27 +19,31 @@ are this port's own work.
 - The **F1 settings panel** (display mode, resolution, aspect, ultrawide, vsync, frame cap, HDR on
   Windows, render scale, anisotropic filtering, key bindings, and this game's own typed-word cheats
   as toggle rows) and the **F2 performance panel** (frame-time graph, fps/ms, backend, counters).
-- Keyboard and mouse as controller port 0, plus a real gamepad through SDL3.
+- Keyboard and mouse as controller port 0, plus a real gamepad through SDL3 — a DualSense (PS5) pad
+  reaches the title's own `XInputGetState`, analogue triggers and all.
 - Game speed is real time at any frame rate: the engine's 60th-of-a-second quantiser is replaced
   with a host-clock tick, measured 1.000 simulated seconds per real second at 60, 144 and uncapped
   (`docs/frame-rate.md`).
 - The picture rect is measured from the game's own renderer — it draws 640×432 at y=24 inside its
   640×480 back buffer — so there are no overscan bars (`docs/picture-rect.md`).
+- **Runs on real Windows.** The released `Sims1.exe` boots, mounts the disc image straight out of
+  `assets/`, draws through Direct3D 12 and sounds through XAudio2 (Windows 11 26200, RTX 5060 Ti;
+  `docs/status.md`).
 
 ## What does not (yet)
 
-- **Audio is silent.** The DirectSound mix runs, the stream opens, all 48 voices stay at zero — no
-  sound has been heard on any run.
-- The Windows target cross-compiles but has never been run.
-- No gamepad has ever been plugged into the test machine; the SDL gamepad path is unexercised.
+- Full-screen movies are trimmed by the measured 24-row picture crop: they are copied raw over all
+  480 rows, so the crop takes 24 rows off them (`docs/picture-rect.md`).
 - Hor+ ultrawide widens the frame target, but the title's own aspect path has not been analysed.
 
 The authoritative list, with evidence, is `docs/status.md`.
 
 ## Building (Linux)
 
-Bring your own disc. Put the game's files in `assets/` (the 14 files from the disc root, including
-`default.xbe`; `tools/xiso_extract.py` extracts them from an image), then:
+Bring your own disc: drop the disc image into `assets/` as a `.iso` and that is the whole setup —
+the port mounts it as the console's `D:` at startup, and `build.sh` takes `default.xbe` back out of
+it for the recompiler (the build needs that one file on disk). Extracting the 14 disc files into
+`assets/` yourself with `tools/xiso_extract.py` works too, and is not faster.
 
 ```sh
 ./build.sh                 # configures, writes config/game.toml, builds out/build/linux-release/Sims1
@@ -58,11 +62,12 @@ cmake --preset windows-cross && cmake --build --preset windows-cross
 
 `cmake/windows-cross.cmake` drives clang-cl + lld-link against an xwin-downloaded Windows SDK;
 `out/build/windows-cross/Sims1.exe` is the result. On Windows itself, `build.bat` does the same
-with a local MSVC.
+with a local MSVC and LLVM — about two minutes for the whole XBE on a 12-thread desktop.
 
 ## Running
 
-The executable finds the game beside it in `assets/`. Runtime switches the siblings share:
+The executable finds the game beside it in `assets/`: the disc image as a `.iso`, or the disc's
+files extracted there. Runtime switches the siblings share:
 
 - `XBE_PERF=1` — per-second draw/upload/voice counters.
 - `XBE_CAPTURE_DIR=cap` + **F3** — dump a frame (`frame.txt`, per-target BMPs) and every guest

@@ -2,7 +2,14 @@
 
 ## Image
 
-`Sims, The (USA).xiso.iso`, 413,532,160 bytes, at the repository root.
+`Sims, The (USA).xiso.iso`, 413,532,160 bytes, in `assets/`.
+
+The port does not need any of this at run time: `app::FindGame` (SDK `runtime/app/game_files.cpp`)
+scans `assets/` for `*.iso`, opens the image with `kernel::Disc`, reads only the `default.xbe`
+entry out of it to check the sha1, and mounts the rest as the console's `D:`, streaming each file
+as the guest opens it. Dropping the image in `assets/` is the whole user-facing setup; extraction
+below is a build and analysis step (CMake hashes `assets/default.xbe` and the recompiler reads its
+sections), which `build.sh` and `build.bat` now do themselves with `--only default.xbe`.
 
 ## Tool
 
@@ -11,9 +18,9 @@
 ## Reproduce
 
 ```
-python3 tools/xiso_extract.py info "Sims, The (USA).xiso.iso"
-python3 tools/xiso_extract.py list "Sims, The (USA).xiso.iso"
-python3 tools/xiso_extract.py extract "Sims, The (USA).xiso.iso" assets
+python3 tools/xiso_extract.py info "assets/Sims, The (USA).xiso.iso"
+python3 tools/xiso_extract.py list "assets/Sims, The (USA).xiso.iso"
+python3 tools/xiso_extract.py extract "assets/Sims, The (USA).xiso.iso" assets
 ```
 
 ## Volume geometry
@@ -65,8 +72,15 @@ complete:
 14/14 files, 393.8 MiB written
 ```
 
-`assets/` now holds exactly the 14 names above; `assets/default.xbe` is 2,183,168 bytes, the size
-the `list` reports. The XBE itself is analysed in [`xbe-analysis.md`](xbe-analysis.md).
+and the single-file form the build scripts use, against the image in `assets/`:
+
+```
+1/1 files, 2.1 MiB written
+default.xbe      2183168 bytes, magic b'XBEH', sha1 40ab6f97e8ee3bf4102a5a7820dcb8047fc30097
+```
+
+`assets/default.xbe` is 2,183,168 bytes, the size the `list` reports. The XBE itself is analysed in
+[`xbe-analysis.md`](xbe-analysis.md).
 
 ## Notable files for the port
 
@@ -95,8 +109,8 @@ formats; every statement about what a file *contains* is marked **[inference]**.
 
 ## Legal hygiene
 
-Bring your own disc. The port ships no game data: the user supplies their own copy of the disc
-and extracts it locally with the command above.
+Bring your own disc. The port ships no game data: the user supplies their own copy of the disc and
+drops the image into `assets/`, where it stays — nothing has to leave it.
 
 `.gitignore` ignores `/assets/`, `/generated/`, `/out/`, `*.iso` and `*.xbe`. The disc image, the
 XBE and every file extracted from it, and the recompiled code derived from the XBE, are never

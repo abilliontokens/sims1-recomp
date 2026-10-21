@@ -47,10 +47,13 @@ cp README.md "$STAGE/"
 [ -f sdk/THIRD_PARTY.txt ] && cp sdk/THIRD_PARTY.txt "$STAGE/"
 cat > "$STAGE/assets/PUT_YOUR_GAME_HERE.txt" <<'EOF'
 Put your own legally acquired copy of The Sims (original Xbox, USA) in this
-folder: either the extracted disc files (including default.xbe) or the disc image
-itself as a .iso. This port ships no game data of its own.
+folder. The short way is the disc image itself: drop it in here as a .iso and
+start the game. It is mounted as the console's disc and read as the game asks
+for each file, so nothing is unpacked and nothing else has to be done. The 14
+extracted disc files (default.xbe and its siblings) work just as well.
 
-The build expects sha1 40ab6f97e8ee3bf4102a5a7820dcb8047fc30097 for default.xbe.
+This port ships no game data of its own. It expects sha1
+40ab6f97e8ee3bf4102a5a7820dcb8047fc30097 for default.xbe.
 EOF
 
 rm -f "$TARBALL"
@@ -77,8 +80,10 @@ Needs the Microsoft Visual C++ Redistributable (2015-2022, x64) if you do not
 already have it: https://aka.ms/vs/17/release/vc_redist.x64.exe
 
 Put your own copy of the game in assets\ - see assets\PUT_YOUR_GAME_HERE.txt.
+The disc image alone is enough: drop the .iso in there and run the exe.
 
-This exe was cross-compiled on Linux and has never been run on Windows.
+A controller is read through SDL3: Xbox, PlayStation and Switch pads, hot
+plugged. Keyboard and mouse drive controller port 0 as well.
 EOF
     rm -f "$EXE-win64.zip"
     (cd "$WINSTAGE/.." && 7z a -tzip -bso0 -bsp0 "../../$EXE-win64.zip" "$EXE-win64" >/dev/null)

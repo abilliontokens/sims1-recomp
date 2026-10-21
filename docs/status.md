@@ -1,8 +1,8 @@
 # Bring-up status
 
-Recorded 2026-10-20. Every number below was observed on this machine or read from a file in this
-repository. Where a claim has not been exercised at runtime it says so; that is the authoritative
-distinction in this document.
+Recorded 2026-10-20, Windows rows added 2026-10-21. Every number below was observed on this machine
+or read from a file in this repository. Where a claim has not been exercised at runtime it says so;
+that is the authoritative distinction in this document.
 
 ## Where the port stands
 
@@ -16,7 +16,11 @@ distinction in this document.
 | Kernel imports | 123 imported, **123 covered, 0 uncovered** (`docs/kernel-coverage.md`) |
 | Recompilation | 12889 functions, 541952 instructions, 1741548 of 1954908 code bytes (89.1%), 225 jump tables |
 | Native Linux build (Vulkan + SDL3) | builds and links: 494 targets, ~125 s clean, ~40 s incremental; `out/build/linux-release/Sims1`, 16202696 bytes |
-| Windows build (D3D12 + XAudio2), cross-compiled | builds and links: `out/build/windows-cross/Sims1.exe`, 13908480 bytes; **under Wine 11.20 it boots the title, creates its D3D12 device, runs the movie path and mixes audio** — never run on real Windows |
+| Windows build (D3D12 + XAudio2), cross-compiled | builds and links: `out/build/windows-cross/Sims1.exe`, 13908480 bytes; under Wine 11.20 it boots the title, creates its D3D12 device, runs the movie path and mixes audio |
+| Windows build, native | `build.bat` on VS 2022 BuildTools + LLVM clang 23.1.3 configures, recompiles the whole XBE and links `out/build/release/Sims1.exe` in **108 s**, 388 ninja edges |
+| Windows run, real hardware | **the v0.2.0 release zip's own `Sims1.exe` runs on Windows 11 26200** — RTX 5060 Ti, D3D12, 3840×2160 borderless, 640×480 guest at render scale 4.5. It mounts `assets\Sims, The (USA).xiso.iso` as `D:` with nothing else in `assets\`, reports the 14 files on it, matches the XBE sha1, and reaches the EA/Maxis title screen and the attract demo at 60.0 fps / 16.74 ms; two screen grabs 1.2 s apart differ on 1.7-7.9 % of pixels, so frames are advancing |
+| Audio, real Windows | **sounding**: XAudio2 mastering voice at 48 kHz stereo float, `submitted=500 rendered=500 queued=2 peak=0.4605` at 5 s, and the process's own Windows audio session metered 0.023-0.051 continuously (WASAPI `IAudioMeterInformation`, 40 samples at 10 Hz, 100 % non-zero), unmuted at session volume 1.00 on the default endpoint. Owner-confirmed audible |
+| Controller, real hardware | **a DualSense (PS5) pad works**, on the shipped exe and a local build: SDL 3.4.16 opens it by name (`input: controller 1 plugged in: DualSense Wireless Controller`) and the guest's own `XInputGetState` reads it — 658 of 748 pad-change packets carried an intermediate analogue byte (R2 ramping `07 35 48 6C 99 B2 B7 C7`), a value the keyboard-to-pad layer cannot produce since it only ever writes `00` or `FF`. Owner-confirmed in play |
 | Boot | starts, mounts the disc, loads `$$XTIMAGE`, resolves every kernel import, creates the Direct3D device, plays the intro movies |
 | Picture on screen | intro movies, title, loading, main menu, Create a Sim and live mode; F3 capture 640×480, 19843 distinct colours, 0.0 % black |
 | Gameplay | **a playable household in live mode, unattended, 17 of 17 runs** (`docs/playtest.md`); sustained 1396–1401 draws a frame, 35k verts, 3.3 MB upload |
@@ -46,12 +50,11 @@ Findings, not gaps; each one removed work:
 
 ## Open work, in order of value
 
-1. **Linux audio is silent** while XAudio2 (Windows/Wine) is audible on identical guest code — the defect is localized to the SDL audio path; no investigation started.
-2. **Real Windows run**: the exe cross-compiles and runs under Wine; it has never touched real Windows or real Direct3D 12 drivers.
-3. **A real gamepad**: none has ever been plugged into the test machine.
-4. **Hor+ ultrawide**: the frame target widens, but the title's own aspect path has not been analysed the way Bustin' Out's was (`docs/guest-projection.md` there is the model).
-5. **Full-screen movies are trimmed** by the measured 24-row picture crop (they are copied raw over all 480 rows); a movie-path exception may be worth it (`docs/picture-rect.md`).
-6. Four of the seven cheat codes are confirmed by log only (`docs/cheats.md`).
+1. **Hor+ ultrawide**: the frame target widens, but the title's own aspect path has not been analysed the way Bustin' Out's was (`docs/guest-projection.md` there is the model).
+2. **Full-screen movies are trimmed** by the measured 24-row picture crop (they are copied raw over all 480 rows); a movie-path exception may be worth it (`docs/picture-rect.md`).
+3. **A DualSense resting trigger reads `0x04-0x06`**, not `0x00`, straight out of SDL's axis; nothing in this title has been seen to act on it, and the cheat gate wants both triggers fully held, but no dead zone is applied anywhere in the pad path.
+4. Four of the seven cheat codes are confirmed by log only (`docs/cheats.md`).
+5. Only one pad has been tried. Xbox and Switch controllers go down the same SDL path and are untested here.
 
 ## Reproducing
 

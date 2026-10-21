@@ -15,6 +15,9 @@ set "VSINST=%PF86%\Microsoft Visual Studio\Installer"
 set "VSWHERE=%VSINST%\vswhere.exe"
 set "OUT=%CD%\out\build\release"
 
+rem The port itself runs straight from a disc image in assets. The build needs the XBE as a file:
+rem CMake hashes it and the recompiler reads its sections, so take that one file out of the image.
+if not exist assets\%GAME_XBE% call :fromiso
 if not exist assets\%GAME_XBE% goto :nogame
 
 rem toolchain
@@ -95,10 +98,30 @@ echo                                     and "C++ CMake tools for Windows"
 echo         git                      -  https://git-scm.com/download/win
 goto :fail
 
+rem Takes just the XBE out of the first disc image in assets. No parenthesised block touches %ISO%:
+rem cmd expands it while it parses the whole block, and a disc image called "... (USA).iso" closes
+rem the block on its own bracket.
+:fromiso
+set "ISO="
+for %%i in (assets\*.iso) do set "ISO=%%i"
+if not defined ISO exit /b 0
+set "PY="
+where python >nul 2>nul && set "PY=python"
+if defined PY goto :fromiso_run
+where py >nul 2>nul && set "PY=py"
+if defined PY goto :fromiso_run
+echo   A disc image is in assets but Python is not installed, so %GAME_XBE% cannot be taken
+echo   out of it. Install Python from https://python.org and run this again.
+exit /b 0
+:fromiso_run
+echo   taking %GAME_XBE% out of %ISO%
+"%PY%" tools\xiso_extract.py extract "%ISO%" assets --only %GAME_XBE%
+exit /b 0
+
 :nogame
-echo   Put the full game files in the assets folder first:
+echo   Put the game in the assets folder first:
 echo     %CD%\assets
-echo   It needs %GAME_XBE% with the game's folders beside it.
+echo   Either the disc image as a .iso, or %GAME_XBE% with the game's files beside it.
 goto :fail
 
 :fail
