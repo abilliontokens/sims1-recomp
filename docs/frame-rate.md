@@ -325,9 +325,14 @@ fast at 175+: the camera zoom is the known one (owner-reported; fix in progress,
 
 ## Not covered
 
-- Live mode above ~58 fps: this machine cannot run the title thread faster in a household, so the
-  fix's behaviour there at 144 fps and beyond is the front end's measurement, not a live one.
+- Live mode now runs at 175-244 fps on this machine (the wakeup fix above), so the earlier
+  caveat - that behaviour above ~58 fps in live mode was only ever measured in the front end -
+  is obsolete for the frame-step fix itself, which held 1.000 game seconds per real second at
+  1504 fps in the front end and at 60 in live mode. What high frame rates **did** expose is the
+  per-call consumer class below: the camera zoom steps per poll and runs ~6x console speed at
+  176 fps (`docs/zoom-rate.md`).
 - The console ran the menus and the game at presentation interval 2 (`d3d: Reset ... interval 2`
-  in every log; interval 1 for movies), i.e. 30 fps. The host ignores the interval. Anything that
-  steps per frame and was tuned for 30 fps would run at the host's frame rate; none was found in
-  the paths measured above, and live-mode camera/cursor rates were not compared against a console.
+  in every log; interval 1 for movies), i.e. 30 fps. The host ignores the interval. Anything
+  that steps per frame and was tuned for 30 fps runs at the host's frame rate; the zoom is the
+  one found so far, and live-mode cursor and rotate rates have still not been compared against a
+  console.

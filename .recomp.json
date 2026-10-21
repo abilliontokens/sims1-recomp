@@ -29,8 +29,8 @@
     }
   ],
   "help": [
-    "Exercise a real controller: no gamepad has ever been plugged into the test machine, so the SDL gamepad path is unexercised",
-    "Audio: the mix runs and the stream opens, but every voice is silent so far (docs/boot-crash.md); no sound has been heard on any run",
+    "Camera zoom steps per poll and runs ~6x console speed above 60 fps now that live mode reaches 175+ (docs/zoom-rate.md); check rotate and cursor rates against a console too",
+    "Audio is silent on Linux/SDL while the identical guest code is audible through XAudio2 under Wine (docs/boot-crash.md) - the SDL audio path is the defect",
     "Exercise the Windows target (Direct3D 12 + XAudio2): it cross-compiles but has never been run",
     "Drive the four cheats only confirmed by log (FREEALL, MIDAS, PARTY M, PICTURES) to their visible effects (docs/cheats.md)",
     "Hor+ ultrawide: the frame target widens, but the title's own aspect path has not been analysed as the siblings' was (docs/guest-projection.md on Bustin' Out is the model)",
