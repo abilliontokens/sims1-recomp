@@ -99,8 +99,11 @@ function untouched for an A/B without a rebuild (the `HookOff` convention, like
 
 ## Measured (before / after)
 
-**The A/B was cut short by the owner's release call**, so the before/after pair is not complete.
-What was measured, and how:
+**Confirmed after the release cut-off**, with the shipped binary and a wall-clock hold rather than
+the probe: the same 1.5 s hold of zoom-out reaches the *same* camera position at `fps_cap = 60`
+and uncapped (~198 fps) - mean pixel difference 0.64 over the game picture, 1.2% of pixels
+(moving Sim and HUD), against 42% of pixels when the zoom genuinely differs. The earlier arms and
+their instrument:
 
 A temporary probe (since removed) wrapped `sub_00011ED0` and logged, per camera update, the
 camera distance `[cam+0x16D8]`, the pitch `[cam+0x16E0]` and the mode, with host steady-clock
@@ -116,6 +119,16 @@ timestamps — the same instrument shape `docs/frame-rate.md` used. The walk to 
 | --- | ---: | ---: | ---: | --- |
 | zoom out, full range (10 -> 40) | **0.834 s** | 50 | 60.0/s | 30.0 units |
 | zoom in, full range (40 -> 10) | **0.948 s** | 57 | 60.1/s | 30.0 units |
+
+That arm is the stock rate at the reference cadence: 60 calls a second, the rate the wrapper
+scales every other frame rate back to.
+
+**The confirmation runs** (`out/shots`, shipped binary, `spectacle -a` captures):
+`fps_cap 60` and `fps_cap 0` each held zoom-out for exactly 1.5 s from an identical camera
+position, after `out/batching/refocus.sh` - without that step the synthetic key never reaches the
+game and *both* the fixed and the gate-off arms show no zoom at all, which is how a broken
+measurement looks like a regression. Fixed at 60 fps the zoom responds and lands in the same place
+as uncapped.
 
 The live camera runs **mode 2** — the mode whose handler is `sub_00011ED0`, the per-call one —
 and the trace shows the distance stepping once per camera update with no delta anywhere in the
