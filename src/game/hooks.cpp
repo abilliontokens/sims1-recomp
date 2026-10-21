@@ -5,6 +5,7 @@
 #include <cstdlib>
 #include <cstring>
 
+
 #include "cpu/x86_ops.h"
 #include "xdk/hle.h"
 
@@ -14,6 +15,13 @@ namespace {
 bool HookOff(const char* name) {
     const char* v = std::getenv(name);
     return v && v[0] && std::strcmp(v, "0") != 0;
+}
+
+// SIMS1_NO_ZOOMRATE: the zoom-rate wrapper at the end of this file runs the image's own
+// sub_00011ED0 untouched (docs/zoom-rate.md)
+bool ZoomRateOff() {
+    static const bool off = HookOff("SIMS1_NO_ZOOMRATE");
+    return off;
 }
 
 // SIMS1_NO_STEP: both frame-step wrappers below run the image's own functions untouched
@@ -144,3 +152,51 @@ X86_FUNC(sub_0012FB80) {
     X86_MEM8(frame + 0x5u) = fixed_step;
     X86_MEMF32(kTickSize) = tick_size;
 }
+
+// The manual camera's zoom, sub_00011ED0 (this in ecx, no stack arguments, plain retn, bool in
+// al; docs/zoom-rate.md has the derivation). Called once per camera update - once per frame -
+// from sub_00012BD0 (vtable slot 0x1F1764) when the camera's mode word [cam+0x165C] is 2 (or 4
+// returning from 2), it steps the camera distance [cam+0x16D8] (clamped to [flt_20A938,
+// flt_20A934] = [6.5, 40.0], the field sub_00012830 normalises into the view's zoom at 0x12839)
+// by MINUS the right-stick Y deflection, and the pitch word [cam+0x16E0] by the same
+// amount, per call with no frame-delta multiply anywhere in the function (0x11F62/0x11F6C). The
+// zoom speed is therefore deflection x calls per second: 4x too fast at 240 fps, exactly the
+// defect the owner reports at the port's new live-mode rate.
+//
+// The sibling method: rescale the per-call step by the call rate, here by 60 / calls_per_second
+// (60 calls/s is the reference - the stock behaviour at the port's 60 fps cap and the engine's
+// own tick size [0x324220] = 1/60 s). The other two stick handlers in the same update
+// (sub_00011D40, sub_00011E00) already multiply their step by the frame delta [0x20C150] and
+// are NOT wrapped: scaling them would correct them twice.
+//
+// The wrapper snapshots the two fields the guest handler steps, runs the image's own function,
+// and keeps rate/60 of the change it made. The scale is clamped to <= 1, so every written value
+// lies between the snapshot and the guest's own clamped result - the image's bounds, endpoints
+// and easing shape hold exactly, only spread over the wall-clock time they should take. The
+// rate is low-passed (0.25 s time constant) on the measured call interval, so a loading-screen
+// gap between calls cannot spike it. SIMS1_NO_ZOOMRATE=1 runs the image's function untouched
+// for an A/B without a rebuild.
+X86_FUNC(__imp__sub_00011ED0);
+X86_FUNC(sub_00011ED0) {
+    using clock = std::chrono::steady_clock;
+    if (ZoomRateOff()) {
+        __imp__sub_00011ED0(ctx, base);
+        return;
+    }
+    static clock::time_point last{};  // camera update thread only
+    static double rate = 60.0;        // calls per second, low-passed
+    const clock::time_point now = clock::now();
+    if (last != clock::time_point{}) {
+        const double dt = std::chrono::duration<double>(now - last).count();
+        if (dt > 0.0) rate += (1.0 / dt - rate) * dt / (0.25 + dt);
+    }
+    last = now;
+    const float scale = float(60.0 / rate);
+    const uint32_t cam = ctx.ecx;
+    const float dist = X86_MEMF32(cam + 0x16D8u), pitch = X86_MEMF32(cam + 0x16E0u);
+    __imp__sub_00011ED0(ctx, base);  // plain ret, pops its own return
+    const float k = scale < 1.0f ? scale : 1.0f;
+    X86_MEMF32(cam + 0x16D8u) = dist + (X86_MEMF32(cam + 0x16D8u) - dist) * k;
+    X86_MEMF32(cam + 0x16E0u) = pitch + (X86_MEMF32(cam + 0x16E0u) - pitch) * k;
+}
+
